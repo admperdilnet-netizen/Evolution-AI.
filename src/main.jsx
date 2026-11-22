@@ -12,6 +12,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [providers, setProviders] = useState([]);
   const [outputs, setOutputs] = useState([]);
+  const [jobId, setJobId] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,6 +22,27 @@ function App() {
       .catch(() => setNotice("El servidor de generación todavía no está iniciado."));
   }, []);
 
+  useEffect(() => {
+    if (!jobId) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/jobs/${jobId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!active) return;
+        setOutputs(data.outputs || []);
+        if ((data.outputs || []).length && data.outputs.every(item => ["completed", "error", "failed"].includes((item.status || "").toLowerCase()))) {
+          setNotice("Los motores terminaron. Revisa los resultados disponibles.");
+          clearInterval(timer);
+        }
+      } catch (_) {}
+    };
+    const timer = setInterval(poll, 8000);
+    poll();
+    return () => { active = false; clearInterval(timer); };
+  }, [jobId]);
+
   async function handleGenerate(event) {
     event.preventDefault();
     if (!prompt.trim()) {
@@ -29,6 +51,7 @@ function App() {
     }
     setLoading(true);
     setOutputs([]);
+    setJobId("");
     setNotice("Enviando tu idea a los motores que estén configurados...");
     try {
       const response = await fetch("/api/generate", {
@@ -39,6 +62,7 @@ function App() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo iniciar la generación.");
       setOutputs(data.outputs || []);
+      setJobId(data.jobId || "");
       setNotice("Solicitud enviada. Los motores están trabajando en paralelo; los resultados se irán consultando desde el servidor.");
     } catch (error) {
       setNotice(error.message || "No se pudo conectar con el servidor.");
@@ -78,7 +102,7 @@ function App() {
           </div>
           <button className="generate-button" type="submit" disabled={loading}>{loading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>} {loading ? "Enviando a los motores..." : "Crear mi video"}</button>
           {notice && <p className="notice" role="status">{notice}</p>}
-          {outputs.length > 0 && <div className="job-results"><h3>Estado de los motores</h3>{outputs.map(item => <div className="job-row" key={item.provider}><span>{providerNames[item.provider] || item.provider}</span><span className={item.status === "error" ? "status-error" : "status-wait"}>{item.status === "error" ? item.error : "Solicitud enviada"}</span></div>)}</div>}
+          {outputs.length > 0 && <div className="job-results"><h3>Estado de los motores</h3>{outputs.map(item => <div className="job-row" key={item.provider}><span>{providerNames[item.provider] || item.provider}</span><span className={item.status === "error" ? "status-error" : "status-wait"}>{item.status === "error" ? item.error : item.status === "completed" ? (item.videoUrl ? <a href={item.videoUrl} target="_blank" rel="noreferrer">Video listo · Abrir</a> : "Completado") : item.status === "submitted" ? "Solicitud enviada" : "Procesando"}</span></div>)}</div>}
         </form>
       </section>
 
