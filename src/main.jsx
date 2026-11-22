@@ -33,8 +33,8 @@ function App() {
         const data = await response.json();
         if (!active) return;
         setOutputs(data.outputs || []);
-        if ((data.outputs || []).length && data.outputs.every(item => ["completed", "error", "failed"].includes((item.status || "").toLowerCase()))) {
-          setNotice("Los motores terminaron. Revisa los resultados disponibles.");
+        if ((data.outputs || []).length && data.outputs.every(item => ["COMPLETED", "ERROR", "FAILED"].includes((item.status || "").toUpperCase()))) {
+          setNotice("Los motores terminaron. Revisa los videos disponibles.");
           clearInterval(timer);
         }
       } catch (_) {}
@@ -92,7 +92,7 @@ function App() {
       <section className="workspace" id="crear">
         <div className="section-heading">
           <div><div className="eyebrow"><Clapperboard size={15}/> ESTUDIO DE VIDEO</div><h2>Crear un video</h2></div>
-          <span className="duration-note"><Clock3 size={15}/> Proyecto de hasta 1 minuto · clips por motor</span>
+          <span className="duration-note"><Clock3 size={15}/> Objetivo: hasta 1 minuto · cada motor genera clips cortos</span>
         </div>
         <form className="creator-card" onSubmit={handleGenerate}>
           <label htmlFor="prompt">Describe el video que imaginas</label>
