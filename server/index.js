@@ -15,7 +15,7 @@ if (process.env.NODE_ENV === "production") app.use(express.static(path.resolve(_
 
 const PORT = Number(process.env.PORT || 3000);
 const jobs = new Map();
-const MAX_MODELS = Math.max(1, Math.min(5, Number(process.env.FAL_MAX_MODELS || 3)));
+const MAX_MODELS = Math.max(1, Math.min(6, Number(process.env.FAL_MAX_MODELS || 1)));
 const generationLimit = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: Number(process.env.GENERATION_LIMIT_PER_HOUR || 2),
@@ -29,7 +29,8 @@ const MODEL_CATALOG = [
   { id: "fal-ai/kling-video/v3/standard/text-to-video", name: "Kling 3.0 Standard", family: "Movimiento y escenas", maxSeconds: 15, tier: 2 },
   { id: "fal-ai/wan/v2.7/text-to-video", name: "Wan 2.7", family: "Versatilidad", maxSeconds: 15, tier: 3 },
   { id: "bytedance/seedance-2.0/fast/text-to-video", name: "Seedance 2.0 Fast", family: "Narrativa y audio", maxSeconds: 15, tier: 4 },
-  { id: "fal-ai/ltx-2.3-22b/text-to-video", name: "LTX 2.3", family: "Generación flexible", maxSeconds: 10, tier: 5 }
+  { id: "fal-ai/ltx-2.3-22b/text-to-video", name: "LTX 2.3", family: "Generación flexible", maxSeconds: 10, tier: 5 },
+  { id: "minimax/h3-max-turbo/text-to-video", name: "MiniMax H3 Max Turbo", family: "Mejor equilibrio de coste y calidad", maxSeconds: 15, tier: 6 }
 ];
 
 if (process.env.FAL_KEY) fal.config({ credentials: process.env.FAL_KEY });
@@ -43,16 +44,19 @@ function selectedModels() {
 function buildInput(model, prompt, format, requestedDuration) {
   const duration = Math.max(5, Math.min(Number(requestedDuration) || 8, model.maxSeconds));
   if (model.id.includes("veo3.1")) {
-    return { prompt, aspect_ratio: format === "1:1" ? "16:9" : format, resolution: "720p", generate_audio: true };
+    return { prompt, aspect_ratio: format === "1:1" ? "16:9" : format, resolution: "720p", generate_audio: false };
   }
   if (model.id.includes("kling-video")) {
-    return { prompt, duration: String(Math.min(15, Math.max(3, duration))), aspect_ratio: format, generate_audio: true };
+    return { prompt, duration: String(Math.min(15, Math.max(3, duration))), aspect_ratio: format, generate_audio: false };
   }
   if (model.id.includes("wan/v2.7")) {
     return { prompt, duration: Math.min(15, Math.max(5, duration)), aspect_ratio: format, resolution: "720p" };
   }
   if (model.id.includes("seedance")) {
-    return { prompt, duration: Math.min(15, Math.max(4, duration)), aspect_ratio: format, resolution: "720p", generate_audio: true };
+    return { prompt, duration: Math.min(15, Math.max(4, duration)), aspect_ratio: format, resolution: "720p", generate_audio: false };
+  }
+  if (model.id.includes("h3-max-turbo")) {
+    return { prompt, duration: Math.min(15, Math.max(2, duration)), resolution: "768P", aspect_ratio: format, prompt_expansion_mode: "balanced" };
   }
   return { prompt };
 }
