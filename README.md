@@ -10,6 +10,7 @@ La aplicación incluye adaptadores configurables para:
 - Wan 2.7
 - ByteDance Seedance 2.0 Fast
 - LTX 2.3
+- MiniMax H3 Max Turbo (modelo predeterminado de menor coste)
 
 Todos se llaman mediante la misma API de fal.ai y su cola de trabajos. El servidor puede enviar la misma idea a varios modelos en paralelo, consultar sus estados y devolver las URLs de los videos terminados.
 
@@ -17,7 +18,7 @@ Todos se llaman mediante la misma API de fal.ai y su cola de trabajos. El servid
 
 - La única clave necesaria para activar estos modelos es `FAL_KEY`.
 - La clave se guarda únicamente en variables privadas del servidor; nunca en React, en el navegador ni en GitHub.
-- Por precaución, `FAL_MAX_MODELS=1` por defecto. Se puede subir a 3 o 5 después de revisar el saldo y el precio de cada modelo.
+- Por precaución, `FAL_MAX_MODELS=1` por defecto y MiniMax H3 Max Turbo queda como motor inicial de menor coste. Se puede subir a 3 o 6 después de revisar el saldo y el precio de cada modelo.
 - El endpoint de generación tiene un límite de solicitudes por hora.
 - Los proveedores cobran por uso. En particular, Veo y Kling pueden cobrar por segundo de video; ejecutar varios modelos en paralelo multiplica el coste.
 
@@ -38,6 +39,7 @@ Usa `FAL_MODELS` para seleccionar endpoints disponibles separados por comas. IDs
 - `fal-ai/wan/v2.7/text-to-video`
 - `bytedance/seedance-2.0/fast/text-to-video`
 - `fal-ai/ltx-2.3-22b/text-to-video`
+- `minimax/h3-max-turbo/text-to-video`
 
 El número máximo efectivo de modelos simultáneos se limita mediante `FAL_MAX_MODELS` (1 a 5).
 
