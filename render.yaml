@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: evolution-ai
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FAL_KEY
+        sync: false
+      - key: FAL_MAX_MODELS
+        value: "1"
+      - key: GENERATION_LIMIT_PER_HOUR
+        value: "2"
+      - key: APP_ORIGIN
+        value: "*"
