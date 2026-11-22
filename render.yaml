@@ -13,6 +13,8 @@ services:
         sync: false
       - key: FAL_MAX_MODELS
         value: "1"
+      - key: FAL_MODELS
+        value: "minimax/h3-max-turbo/text-to-video"
       - key: GENERATION_LIMIT_PER_HOUR
         value: "2"
       - key: APP_ORIGIN
