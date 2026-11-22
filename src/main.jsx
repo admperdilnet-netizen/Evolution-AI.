@@ -102,7 +102,7 @@ function App() {
           </div>
           <button className="generate-button" type="submit" disabled={loading}>{loading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>} {loading ? "Enviando a los motores..." : "Crear mi video"}</button>
           {notice && <p className="notice" role="status">{notice}</p>}
-          {outputs.length > 0 && <div className="job-results"><h3>Estado de los motores</h3>{outputs.map(item => <div className="job-row" key={item.provider}><span>{providerNames[item.provider] || item.provider}</span><span className={item.status === "error" ? "status-error" : "status-wait"}>{item.status === "error" ? item.error : item.status === "completed" ? (item.videoUrl ? <a href={item.videoUrl} target="_blank" rel="noreferrer">Video listo · Abrir</a> : "Completado") : item.status === "submitted" ? "Solicitud enviada" : "Procesando"}</span></div>)}</div>}
+          {outputs.length > 0 && <div className="job-results"><h3>Estado de los motores</h3>{outputs.map(item => <div className="job-row" key={item.provider}><span>{providerNames[item.provider] || item.provider}</span><span className={["error", "failed"].includes((item.status || "").toLowerCase()) ? "status-error" : "status-wait"}>{["error", "failed"].includes((item.status || "").toLowerCase()) ? (item.error || "El motor no pudo generar el video") : item.status === "completed" ? (item.videoUrl ? <a href={item.videoUrl} target="_blank" rel="noreferrer">Video listo · Abrir</a> : "Completado") : item.status === "submitted" ? "Solicitud enviada" : "Procesando"}</span></div>)}</div>}
         </form>
       </section>
 
