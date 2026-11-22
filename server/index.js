@@ -2,11 +2,15 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
 app.use(cors({ origin: process.env.APP_ORIGIN?.split(",") ?? true }));
 app.use(express.json({ limit: "10mb" }));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+if (process.env.NODE_ENV === "production") app.use(express.static(path.resolve(__dirname, "../dist")));
 
 const jobs = new Map();
 const PORT = Number(process.env.PORT || 3000);
