@@ -61,9 +61,13 @@ async function submitWan({ prompt, duration, format }) {
       "X-DashScope-Async": "enable"
     },
     body: JSON.stringify({
-      model: process.env.WAN_MODEL || "wan2.2-t2v-plus",
+      model: process.env.WAN_MODEL || "wan2.7-t2v",
       input: { prompt },
-      parameters: { duration: Math.min(Number(duration), 10), size: format === "9:16" ? "720*1280" : "1280*720" }
+      parameters: {
+        duration: Math.min(Number(duration), 15),
+        resolution: process.env.WAN_RESOLUTION || "720P",
+        ratio: format
+      }
     })
   });
   const data = await response.json().catch(() => ({}));
@@ -115,9 +119,48 @@ app.post("/api/generate", async (req, res) => {
   res.status(202).json({ jobId: id, status: "submitted", outputs });
 });
 
-app.get("/api/jobs/:id", (req, res) => {
+app.get("/api/jobs/:id", async (req, res) => {
   const job = jobs.get(req.params.id);
   if (!job) return res.status(404).json({ error: "Trabajo no encontrado o servidor reiniciado." });
+
+  const refreshed = await Promise.all(job.outputs.map(async item => {
+    if (!item.providerJobId || item.status === "error" || item.status === "completed") return item;
+    try {
+      if (item.provider === "ltx") {
+        const response = await fetch(`https://api.ltx.io/v2/text-to-video/${encodeURIComponent(item.providerJobId)}`, {
+          headers: { Authorization: `Bearer ${process.env.LTX_API_KEY}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error?.message || `LTX respondió ${response.status}`);
+        return { ...item, status: data.status || "processing", videoUrl: data.result?.video_url, error: data.error };
+      }
+      if (item.provider === "wan") {
+        const base = process.env.WAN_TASK_STATUS_URL || process.env.WAN_API_URL.replace(/\/services\/aigc\/video-generation\/video-synthesis\/?$/, "/tasks");
+        const response = await fetch(`${base.replace(/\/$/, "")}/${encodeURIComponent(item.providerJobId)}`, {
+          headers: { Authorization: `Bearer ${process.env.WAN_API_KEY}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.message || `Wan respondió ${response.status}`);
+        const state = data.output?.task_status || data.status || "processing";
+        const url = data.output?.video_url || data.output?.video_urls?.[0];
+        return { ...item, status: state.toLowerCase() === "succeeded" ? "completed" : state.toLowerCase(), videoUrl: url, error: data.output?.message };
+      }
+      if (item.provider === "veo") {
+        const client = new GoogleGenAI({
+          vertexai: true,
+          project: process.env.GOOGLE_CLOUD_PROJECT,
+          location: process.env.GOOGLE_CLOUD_LOCATION || "global"
+        });
+        const operation = await client.operations.get({ operation: item.providerJobId });
+        const video = operation.response?.generatedVideos?.[0]?.video;
+        return { ...item, status: operation.done ? (video ? "completed" : "error") : "processing", videoUrl: video?.uri, error: operation.error?.message };
+      }
+    } catch (error) {
+      return { ...item, status: "error", error: error.message || "No se pudo consultar el estado." };
+    }
+    return item;
+  }));
+  job.outputs = refreshed;
   res.json(job);
 });
 
