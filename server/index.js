@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import cors from "cors";
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
@@ -9,6 +10,7 @@ import { GoogleGenAI } from "@google/genai";
 const app = express();
 app.use(cors({ origin: process.env.APP_ORIGIN?.split(",") ?? true }));
 app.use(express.json({ limit: "10mb" }));
+const generationLimit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 3, standardHeaders: "draft-7", legacyHeaders: false, message: { error: "Límite temporal alcanzado. Intenta más tarde." } });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 if (process.env.NODE_ENV === "production") app.use(express.static(path.resolve(__dirname, "../dist")));
 
@@ -94,10 +96,13 @@ async function submitVeo({ prompt, format }) {
 
 const submitters = { veo: submitVeo, wan: submitWan, ltx: submitLtx };
 
-app.post("/api/generate", async (req, res) => {
+app.post("/api/generate", generationLimit, async (req, res) => {
   const { prompt, duration = 10, format = "16:9" } = req.body || {};
-  if (typeof prompt !== "string" || prompt.trim().length < 3) {
-    return res.status(400).json({ error: "Escribe una descripción válida." });
+  if (typeof prompt !== "string" || prompt.trim().length < 3 || prompt.length > 5000) {
+    return res.status(400).json({ error: "Escribe una descripción válida de máximo 5,000 caracteres." });
+  }
+  if (![10, 15, 30, 60].includes(Number(duration)) || !["16:9", "9:16", "1:1"].includes(format)) {
+    return res.status(400).json({ error: "Duración o formato no válido." });
   }
   const enabled = Object.keys(submitters).filter(configured);
   if (!enabled.length) {
