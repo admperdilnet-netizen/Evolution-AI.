@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Film, Sparkles, Clapperboard, ImagePlus, Clock3, WandSparkles, Menu, Cpu, LoaderCircle } from "lucide-react";
 import "./style.css";
 
-const providerNames = { veo: "Google Veo", wan: "Wan", ltx: "LTX Video" };
+
 
 function App() {
   const [prompt, setPrompt] = useState("");
@@ -11,6 +11,7 @@ function App() {
   const [format, setFormat] = useState("16:9");
   const [notice, setNotice] = useState("");
   const [providers, setProviders] = useState([]);
+  const [gatewayReady, setGatewayReady] = useState(false);
   const [outputs, setOutputs] = useState([]);
   const [jobId, setJobId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,7 @@ function App() {
   useEffect(() => {
     fetch("/api/providers")
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => setProviders(data.providers || []))
+      .then(data => { setProviders(data.providers || []); setGatewayReady(Boolean(data.keyConfigured)); })
       .catch(() => setNotice("El servidor de generación todavía no está iniciado."));
   }, []);
 
@@ -63,7 +64,7 @@ function App() {
       if (!response.ok) throw new Error(data.error || "No se pudo iniciar la generación.");
       setOutputs(data.outputs || []);
       setJobId(data.jobId || "");
-      setNotice("Solicitud enviada. Los motores están trabajando en paralelo; los resultados se irán consultando desde el servidor.");
+      setNotice("Solicitud enviada. Los modelos están trabajando en paralelo; sus resultados se consultan automáticamente.");
     } catch (error) {
       setNotice(error.message || "No se pudo conectar con el servidor.");
     } finally {
@@ -91,7 +92,7 @@ function App() {
       <section className="workspace" id="crear">
         <div className="section-heading">
           <div><div className="eyebrow"><Clapperboard size={15}/> ESTUDIO DE VIDEO</div><h2>Crear un video</h2></div>
-          <span className="duration-note"><Clock3 size={15}/> Proyecto de hasta 1 minuto</span>
+          <span className="duration-note"><Clock3 size={15}/> Proyecto de hasta 1 minuto · clips por motor</span>
         </div>
         <form className="creator-card" onSubmit={handleGenerate}>
           <label htmlFor="prompt">Describe el video que imaginas</label>
@@ -102,22 +103,20 @@ function App() {
           </div>
           <button className="generate-button" type="submit" disabled={loading}>{loading ? <LoaderCircle className="spin" size={18}/> : <WandSparkles size={18}/>} {loading ? "Enviando a los motores..." : "Crear mi video"}</button>
           {notice && <p className="notice" role="status">{notice}</p>}
-          {outputs.length > 0 && <div className="job-results"><h3>Estado de los motores</h3>{outputs.map(item => <div className="job-row" key={item.provider}><span>{providerNames[item.provider] || item.provider}</span><span className={["error", "failed"].includes((item.status || "").toLowerCase()) ? "status-error" : "status-wait"}>{["error", "failed"].includes((item.status || "").toLowerCase()) ? (item.error || "El motor no pudo generar el video") : item.status === "completed" ? (item.videoUrl ? <a href={item.videoUrl} target="_blank" rel="noreferrer">Video listo · Abrir</a> : "Completado") : item.status === "submitted" ? "Solicitud enviada" : "Procesando"}</span></div>)}</div>}
+          {!gatewayReady && <p className="notice">El motor central fal.ai aún no tiene su clave privada configurada. No se enviarán solicitudes ni se producirán cargos.</p>}
+          {outputs.length > 0 && <div className="job-results"><h3>Estado de los motores</h3>{outputs.map(item => <div className="job-row" key={item.modelId}><span>{item.modelName || item.modelId}</span><span className={["error", "failed"].includes((item.status || "").toLowerCase()) ? "status-error" : "status-wait"}>{["error", "failed"].includes((item.status || "").toLowerCase()) ? (item.error || "El motor no pudo generar el video") : item.status === "COMPLETED" ? (item.videoUrl ? <a href={item.videoUrl} target="_blank" rel="noreferrer">Video listo · Abrir</a> : "Completado") : item.status === "IN_QUEUE" ? "En cola" : "Procesando"}</span></div>)}</div>}
         </form>
       </section>
 
       <section className="providers" id="motores">
         <div className="section-heading"><div><div className="eyebrow"><Cpu size={15}/> SISTEMA MULTIMOTOR</div><h2>Motores de generación</h2></div></div>
         <div className="provider-grid">
-          {["veo","wan","ltx"].map(id => {
-            const provider = providers.find(p => p.id === id);
-            return <div className="provider-card" key={id}><span className="provider-icon"><Sparkles size={18}/></span><div><h3>{providerNames[id]}</h3><p>{id === "veo" ? "Calidad cinematográfica" : id === "wan" ? "Modelo abierto y flexible" : "Rapidez y generación audiovisual"}</p></div><span className={provider?.configured ? "provider-ready" : "provider-pending"}>{provider?.configured ? "Configurado" : "Falta conectar"}</span></div>;
-          })}
+          {providers.map(model => <div className="provider-card" key={model.id}><span className="provider-icon"><Sparkles size={18}/></span><div><h3>{model.name}</h3><p>{model.family} · clips de hasta {model.maxSeconds} segundos</p></div><span className={model.enabled ? "provider-ready" : "provider-pending"}>{model.enabled ? "En el grupo activo" : "Disponible"}</span></div>)}
         </div>
       </section>
 
       <section className="features">
-        <div className="feature"><span><Sparkles/></span><h3>Trabajo en paralelo</h3><p>Los motores configurados reciben la misma solicitud simultáneamente.</p></div>
+        <div className="feature"><span><Sparkles/></span><h3>Trabajo en paralelo</h3><p>Evolution AI envía tu idea a varios modelos mediante una sola conexión segura.</p></div>
         <div className="feature"><span><ImagePlus/></span><h3>Texto e imágenes</h3><p>Arquitectura preparada para ampliar a imágenes de referencia.</p></div>
         <div className="feature"><span><Film/></span><h3>Montaje final</h3><p>El proyecto contempla unir escenas, audio, subtítulos y formato final.</p></div>
       </section>
